@@ -1,13 +1,13 @@
 """
-autosampler_to_ex.py
+autosampler_to_nt.py
 
 Converts the output files of Logic Pro's autosampler into a format suitable
-for the disting EX.
+for the Disting NT.
 
 Usage: Open a Terminal. cd to the folder containing the files. Copy the script into
 the folder. Enter the command:
 
-python autosampler_to_ex.py
+python3 autosampler_to_nt.py
 
 Then copy the folder to the disting's MicroSD card.
 Delete the .aif files if you wish, but the disting will ignore them anyway.
@@ -15,8 +15,11 @@ Delete the .aif files if you wish, but the disting will ignore them anyway.
 
 # http://pysoundfile.readthedocs.org/
 # 
-# pip install soundfile
+# python3 -m pip install soundfile
+# python3 -m pip install tinytag
 #
+
+from tinytag import TinyTag
 import soundfile as sf
 
 import glob
@@ -56,5 +59,20 @@ for i in range( len( newfiles ) ):
 
 for file, newfile in zip( files, newfiles ):
 	print( file + "\t-> " + newfile )
+
+	tag: TinyTag = TinyTag.get( file )
+	# print( "bitdepth = {0}".format(tag.bitdepth) ) # Debug
+	if   ( tag.bitdepth >= 32 ): fmt_subtype = 'FLOAT'
+	elif ( tag.bitdepth >= 24 ): fmt_subtype = 'PCM_24'
+	elif ( tag.bitdepth <=  8 ): fmt_subtype = 'PCM_U8'
+	else: fmt_subtype = 'PCM_16'
+
+	if not sf.check_format( 'WAV', fmt_subtype ):
+		# if we cannot retain original files' bit depth, force to 24 bit or 16 bit
+		fmt_subtype = 'PCM_24'
+	# print( "{0} subtype".format(fmt_subtype) )  # Debug
+
+	# fmt_subtype = sf.subtype # NOTE: no direct method in soundfile module, use TinyTag
+	# data is read as 'float64' by default in soundfile module
 	data, sr = sf.read( file )
-	sf.write( newfile, data, sr, subtype='PCM_16' )
+	sf.write( newfile, data, sr, fmt_subtype )
